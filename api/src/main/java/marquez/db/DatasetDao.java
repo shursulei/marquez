@@ -71,8 +71,9 @@ public interface DatasetDao extends BaseDao {
           + "    FROM datasets d\n"
           + "    WHERE d.namespace_name = :namespaceName\n"
           + "    AND d.name = :datasetName\n"
+          + "    AND d.is_deleted = FALSE\n"
           + "), dataset_runs AS (\n"
-          + "    SELECT d.uuid, d.name, d.namespace_name, dv.run_uuid, event_time, event\n"
+          + "    SELECT d.uuid, d.name, d.namespace_name, dv.run_uuid, dv.lifecycle_state_change, event_time, event\n"
           + "    FROM selected_datasets d\n"
           + "    INNER JOIN dataset_versions dv ON dv.uuid = d.current_version_uuid\n"
           + "    LEFT JOIN LATERAL (\n"
@@ -80,7 +81,7 @@ public interface DatasetDao extends BaseDao {
           + "        WHERE run_uuid = dv.run_uuid\n"
           + "    ) e ON e.run_uuid = dv.run_uuid\n"
           + "    UNION\n"
-          + "    SELECT d.uuid, d.name, d.namespace_name, rim.run_uuid, event_time, event\n"
+          + "    SELECT d.uuid, d.name, d.namespace_name, rim.run_uuid, lifecycle_state_change, event_time, event\n"
           + "    FROM selected_datasets d\n"
           + "    INNER JOIN dataset_versions dv ON dv.uuid = d.current_version_uuid\n"
           + "    LEFT JOIN runs_input_mapping rim ON dv.uuid = rim.dataset_version_uuid\n"
@@ -89,7 +90,7 @@ public interface DatasetDao extends BaseDao {
           + "        WHERE run_uuid = rim.run_uuid\n"
           + "    ) e ON e.run_uuid = rim.run_uuid\n"
           + ")\n"
-          + "SELECT d.*, dv.fields, sv.schema_location, t.tags, facets\n"
+          + "SELECT d.*, dv.fields, dv.lifecycle_state_change, sv.schema_location, t.tags, facets\n"
           + "FROM selected_datasets d\n"
           + "LEFT JOIN dataset_versions dv ON d.current_version_uuid = dv.uuid\n"
           + "LEFT JOIN stream_versions AS sv ON sv.dataset_version_uuid = dv.uuid\n"
@@ -142,7 +143,7 @@ public interface DatasetDao extends BaseDao {
           + "    ORDER BY d.name\n"
           + "    LIMIT :limit OFFSET :offset\n"
           + "), dataset_runs AS (\n"
-          + "    SELECT d.uuid, d.name, d.namespace_name, dv.run_uuid, event_time, event\n"
+          + "    SELECT d.uuid, d.name, d.namespace_name, dv.run_uuid, dv.lifecycle_state_change, event_time, event\n"
           + "    FROM selected_datasets d\n"
           + "    INNER JOIN dataset_versions dv ON dv.uuid = d.current_version_uuid\n"
           + "    LEFT JOIN LATERAL (\n"
@@ -150,7 +151,7 @@ public interface DatasetDao extends BaseDao {
           + "        WHERE run_uuid = dv.run_uuid\n"
           + "    ) e ON e.run_uuid = dv.run_uuid\n"
           + "    UNION\n"
-          + "    SELECT d.uuid, d.name, d.namespace_name, rim.run_uuid, event_time, event\n"
+          + "    SELECT d.uuid, d.name, d.namespace_name, rim.run_uuid, lifecycle_state_change, event_time, event\n"
           + "    FROM selected_datasets d\n"
           + "    INNER JOIN dataset_versions dv ON dv.uuid = d.current_version_uuid\n"
           + "    LEFT JOIN runs_input_mapping rim ON dv.uuid = rim.dataset_version_uuid\n"
@@ -159,7 +160,7 @@ public interface DatasetDao extends BaseDao {
           + "        WHERE run_uuid = rim.run_uuid\n"
           + "    ) e ON e.run_uuid = rim.run_uuid\n"
           + ")\n"
-          + "SELECT d.*, dv.fields, sv.schema_location, t.tags, facets\n"
+          + "SELECT d.*, dv.fields, dv.lifecycle_state_change, sv.schema_location, t.tags, facets\n"
           + "FROM selected_datasets d\n"
           + "LEFT JOIN dataset_versions dv ON d.current_version_uuid = dv.uuid\n"
           + "LEFT JOIN stream_versions AS sv ON sv.dataset_version_uuid = dv.uuid\n"
@@ -205,7 +206,8 @@ public interface DatasetDao extends BaseDao {
           + "source_name, "
           + "name, "
           + "physical_name, "
-          + "description "
+          + "description, "
+          + "is_deleted "
           + ") VALUES ( "
           + ":uuid, "
           + ":type, "
@@ -217,13 +219,15 @@ public interface DatasetDao extends BaseDao {
           + ":sourceName, "
           + ":name, "
           + ":physicalName, "
-          + ":description) "
+          + ":description, "
+          + ":isDeleted) "
           + "ON CONFLICT (namespace_uuid, name) "
           + "DO UPDATE SET "
           + "type = EXCLUDED.type, "
           + "updated_at = EXCLUDED.updated_at, "
           + "physical_name = EXCLUDED.physical_name, "
-          + "description = EXCLUDED.description "
+          + "description = EXCLUDED.description, "
+          + "is_deleted = EXCLUDED.is_deleted "
           + "RETURNING *")
   DatasetRow upsert(
       UUID uuid,
@@ -235,7 +239,8 @@ public interface DatasetDao extends BaseDao {
       String sourceName,
       String name,
       String physicalName,
-      String description);
+      String description,
+      boolean isDeleted);
 
   @SqlQuery(
       "INSERT INTO datasets ("
@@ -308,7 +313,8 @@ public interface DatasetDao extends BaseDao {
               sourceRow.getName(),
               datasetName.getValue(),
               datasetMeta.getPhysicalName().getValue(),
-              datasetMeta.getDescription().orElse(null));
+              datasetMeta.getDescription().orElse(null),
+              false);
     } else {
       datasetRow =
           upsert(
@@ -340,6 +346,7 @@ public interface DatasetDao extends BaseDao {
                 now,
                 namespaceName.getValue(),
                 datasetName.getValue(),
+                null,
                 datasetMeta);
 
     return findWithTags(namespaceName.getValue(), datasetName.getValue()).get();

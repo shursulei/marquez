@@ -60,6 +60,7 @@ export interface DatasetVersion {
   tags: string[]
   lastModifiedAt: string
   description: string
+  stateChange: string
   facets: object
 }
 
