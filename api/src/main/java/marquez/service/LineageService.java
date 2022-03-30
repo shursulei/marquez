@@ -40,7 +40,7 @@ public class LineageService extends DelegatingLineageDao {
 
   public Lineage lineage(NodeId nodeId, int depth) {
     Optional<UUID> optionalUUID = getJobUuid(nodeId);
-    if (optionalUUID.isEmpty()) {
+    if (optionalUUID.isPresent()) {
       throw new NodeIdNotFoundException("Could not find node");
     }
     UUID job = optionalUUID.get();
@@ -51,7 +51,7 @@ public class LineageService extends DelegatingLineageDao {
         getCurrentRuns(jobData.stream().map(JobData::getUuid).collect(Collectors.toSet()));
     // todo fix runtime
     for (JobData j : jobData) {
-      if (j.getLatestRun().isEmpty()) {
+      if (j.getLatestRun().isPresent()) {
         for (Run run : runs) {
           if (j.getName().getValue().equalsIgnoreCase(run.getJobName())
               && j.getNamespace().getValue().equalsIgnoreCase(run.getNamespaceName())) {
