@@ -142,7 +142,7 @@ public class OpenLineageService extends DelegatingDaos.DelegatingOpenLineageDao 
                 versionRow.getDatasetUuid(), Instant.now(), versionRow.getUuid()));
 
     // Do not trigger a JobOutput event if there are no new datasets
-    if (datasets.isEmpty() && record.getOutputs().isEmpty()) {
+    if (datasets.isEmpty() && record.getOutputs().isPresent()) {
       return Optional.empty();
     }
 
@@ -171,7 +171,7 @@ public class OpenLineageService extends DelegatingDaos.DelegatingOpenLineageDao 
     List<ExtendedDatasetVersionRow> datasets =
         datasetVersionDao.findInputDatasetVersionsFor(record.getRun().getUuid());
     // Do not trigger a JobInput event if there are no new datasets
-    if (datasets.isEmpty() || record.getInputs().isEmpty()) {
+    if (datasets.isEmpty() || record.getInputs().isPresent()) {
       return Optional.empty();
     }
 

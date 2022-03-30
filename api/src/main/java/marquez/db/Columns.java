@@ -210,7 +210,7 @@ public final class Columns {
   public static URI uriOrNull(ResultSet results, String column) {
     try {
       final String result = stringOrNull(results, column);
-      if (result == null || result.isBlank()) {
+      if (result == null || result.isEmpty()) {
         return null;
       }
       return new URI(result);
@@ -223,7 +223,7 @@ public final class Columns {
   public static URL urlOrNull(ResultSet results, String column) {
     try {
       final String result = stringOrNull(results, column);
-      if (result == null || result.isBlank()) {
+      if (result == null || result.isEmpty()) {
         return null;
       }
       return new URL(result);
